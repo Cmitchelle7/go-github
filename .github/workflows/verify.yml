@@ -1,0 +1,26 @@
+name: verify
+on:
+  push:
+    branches: [fix/perpage-zero-pagination]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+      - run: go mod tidy
+      - run: test -z "$(gofmt -l github)" || (gofmt -d github; exit 1)
+      - run: go vet ./github/...
+      - run: go test -v -race ./github/...
+      - name: Commit go.mod and go.sum
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add go.mod go.sum
+          git diff --cached --quiet || (git commit -m "chore: add go.sum" && git push)
